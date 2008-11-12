@@ -8,14 +8,14 @@ A working experiment at the moment! AN APLHA! :)
 
 == Want to try it out?
 
-Install or update following Rubygems:
+Install or update following Rubygems <b>on the local machine or server where you want to run it</b>:
 
-    $ sudo gem install sinatra rack haml sass capistrano
+    $ sudo gem install sinatra rack haml capistrano
 
-Edit and rename configuration file:
+Rename and edit the configuration file:
 
-    $ vim config.example.yml
     $ cp config.example.yml config.yml
+    $ vim config.yml
 
 Run the app in production (nohup):
 
