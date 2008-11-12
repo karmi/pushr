@@ -1,2 +1,4 @@
+# Set to some reasonably safe password. Requests are authorized by this.
 token: ~
+# Full path to your Rails application, eg. "/var/www/my_rails_app"
 path:  ~

@@ -1,15 +1,16 @@
-# = Pushr
-# Deploy Rails applications by running Capistrano tasks with post-commit hooks
-# An experiment. Various notifications? Better logging? Sure. Let's just wait a little bit, shall we? :)
-
 require 'rubygems'
 require 'sinatra'
 require 'yaml'
 
+# = Pushr
+# Deploy Rails applications by Github Post-Receive URLs launching Capistrano's <tt>cap deploy</tt>
+# An experiment.
+
 CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unless defined? CONFIG
 
 # == Pushr class
-# Just wrapping logic somehow, at the moment
+# Just wrapping logic somehow, at the moment.
+# TODO : Refactor into some proper code OMG!
 class Pushr
   def info
     revision_info = `cd #{CONFIG['path']}/shared/cached-copy; git log --pretty=format:'%h : %s [%ar by %an]' -n 1`

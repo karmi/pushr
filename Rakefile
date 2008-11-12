@@ -1,13 +1,18 @@
 require 'rake'
+require 'yaml'
 
 CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unless defined? CONFIG
 
-task :default => 'app:start'
+task :default => 'start:development'
 
-namespace :app do
+namespace :start do
 
-  task :start do
+  task :development do
     system "ruby pushr.rb -p 4000"
+  end
+
+  task :production do
+    system "nohup ruby pushr.rb -p 4000 -e production &"
   end
 
 end

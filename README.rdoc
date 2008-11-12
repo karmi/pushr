@@ -1,11 +1,36 @@
 = Pushr
 
-Deploy Rails applications by running Capistrano tasks with post-commit hooks.
+Deploy Rails applications by Github Post-Receive URLs launching Capistrano's <tt>cap deploy</tt>
 
-A working experiment now! AN APLHA! :)
+Why? Because my friend Machal still cannot fix Capistrano on his Windows box. Because it could be cool.
 
-== Todo
+A working experiment at the moment! AN APLHA! :)
 
-* Notifications (Twitter, Mail)
-* Improve logging
-* HTTP Auth?
+== Want to try it out?
+
+Install or update following Rubygems:
+
+    $ sudo gem install sinatra rack haml sass capistrano
+
+Edit and rename configuration file:
+
+    $ vim config.example.yml
+    $ cp config.example.yml config.yml
+
+Run the app in production (nohup):
+
+    rake start:production
+    
+Set up Github Post-Receive URL (http://github.com/guides/post-receive-hooks) in your repo's administration to:
+
+    http://{YOUR SERVER}:4000?token={TOKEN SET IN CONFIG}
+    
+Load the URL in the browser. You should see some info about deployed revision.
+    
+Then do a <tt>git push</tt> to the git repo. Your application is updated with Capistrano. Done.
+
+== Todos & Ideas
+
+* Notifications (Twitter, e-mail, Jabber, ...)
+* Improve deploy logging
+* List new revisions in "master" branch
