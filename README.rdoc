@@ -1,0 +1,3 @@
+= Pushr
+
+Deploy Rails applications by running Capistrano tasks with post-commit hooks.
