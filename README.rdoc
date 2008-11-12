@@ -1,3 +1,11 @@
 = Pushr
 
 Deploy Rails applications by running Capistrano tasks with post-commit hooks.
+
+A working experiment now! AN APLHA! :)
+
+== Todo
+
+* Notifications (Twitter, Mail)
+* Improve logging
+* HTTP Auth?
