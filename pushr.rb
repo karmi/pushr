@@ -58,7 +58,7 @@ __END__
 @@ layout
 %html
   %head
-    %title= 'W'
+    %title= 'I am Pushr'
     %meta{ 'http-equiv' => 'Content-Type', :content => 'text/html;charset=utf-8' }
     %link{ :rel => 'stylesheet', :type => 'text/css', :href => "/style.css?token=#{CONFIG['token']}" }
   %body
