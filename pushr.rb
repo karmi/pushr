@@ -10,19 +10,40 @@ CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unles
 
 # == Pushr class
 # Just wrapping logic somehow, at the moment.
-# TODO : Refactor into some proper code OMFG!
 class Pushr
-  def info
-    revision_info = `cd #{CONFIG['path']}/current; git log --pretty=format:'%h : %s [%ar by %an]' -n 1`
+
+  Struct.new('Repository', :revision, :message, :author, :when, :datetime) unless defined? Struct::Repository
+
+  attr_reader :path, :application, :repository
+
+  def initialize(path)
+    # TODO : Fail now if path invalid
+    @path = path
+    @application = ::CONFIG['application'] || "You really should set this to something"
+    @repository  = repository_info
+    # puts self.inspect
+    # puts @repository.inspect
   end
+
   def deploy!
     cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap deploy:migrations 2>&1]
     success    = (cap_output.to_s =~ /failed/).nil?
-    twitter_message = (success) ? 'Successfully deployed an application!' : 'OMFG! There were errors when deploying the application! Check log or Pushr page!'
-    # TODO : !OMFG! Refactor this into Notifiers, you hear me?
-    %x[curl --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
+    twitter_message = (success) ?
+      "Deployed #{application} with revision #{repository.revision} — #{repository.message.slice(0, 100)}" :
+      "FAIL! Deploying '#{application}' failed. Check log for details."
+    # TODO : Refactor, refactor, refactor!
+    %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
+    # TODO : This still smells
     { :success => success, :output  => cap_output }
   end
+
+  private
+
+  def repository_info
+    info = `cd #{path}/current; git log --pretty=format:'%h; %s; %an; %ar; %ci' -n 1`
+    Struct::Repository.new( *info.split(/;\s{1}/) )
+  end
+
 end
 
 # Log into file in production
@@ -40,13 +61,15 @@ end
 
 # == Get info
 get '/' do
-  @info = Pushr.new.info
+  @pushr = Pushr.new(CONFIG['path'])
   haml :info
 end
 
 # == Deploy!
 post '/' do
-  @info = Pushr.new.deploy!
+  @pushr = Pushr.new(CONFIG['path'])
+  puts "* Let's deploy #{@pushr.application} now..."
+  @info = @pushr.deploy!
   haml :deployed
 end
 
@@ -62,7 +85,7 @@ __END__
 @@ layout
 %html
   %head
-    %title= 'I am Pushr'
+    %title= "[pushr] #{CONFIG['application']}"
     %meta{ 'http-equiv' => 'Content-Type', :content => 'text/html;charset=utf-8' }
     %link{ :rel => 'stylesheet', :type => 'text/css', :href => "/style.css?token=#{CONFIG['token']}" }
   %body
@@ -71,13 +94,26 @@ __END__
 @@ info
 %div.info
   %p
-    Last deployed revision is
+    Last deployed revision of
     %strong
-      = @info
+      %em
+        = @pushr.application
+    is
+    %strong
+      = @pushr.repository.revision
+    \:
+    %strong
+      %em
+        = @pushr.repository.message
+    committed
+    %strong
+      = @pushr.repository.when
+    by
+    = @pushr.repository.author
   %p
-    %form{ 'action' => "/", :method => 'post' }
+    %form{ :action => "/", :method => 'post', :onsubmit => "this.submit.disabled='true'" }
       %input{ 'type' => 'hidden', 'name' => 'token', 'value' => CONFIG['token'] }
-      %input{ 'type' => 'submit', 'value' => 'Deploy!', 'onclick' => 'this.disable()' }
+      %input{ 'type' => 'submit', 'value' => 'Deploy!', 'name' => 'submit', :id => 'submit' }
 
 
 @@ deployed
@@ -95,7 +131,7 @@ __END__
   %div.failure
     %h2 There were errors when deploying the application!
     %pre
-      = @info[:output]
+      = @pushr[:output]
 
 @@ style
 body
