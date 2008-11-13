@@ -17,8 +17,11 @@ class Pushr
   end
   def deploy!
     cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap deploy:migrations 2>&1]
-    { :success => (cap_output.to_s =~ /failed/).nil?,
-      :output  => cap_output }
+    success    = (cap_output.to_s =~ /failed/).nil?
+    twitter_message = (success) ? 'Successfully deployed an application!' : 'OMFG! There were errors when deploying the application! Check log or Pushr page!'
+    # TODO : !OMFG! Refactor this into Notifiers, you hear me?
+    %x[curl --data status='#{twitter_message}' http://shortcat_deploy:gitit%21@twitter.com/statuses/update.json]
+    { :success => success, :output  => cap_output }
   end
 end
 
