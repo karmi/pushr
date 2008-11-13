@@ -2,15 +2,24 @@
 
 Deploy Rails applications by Github Post-Receive URLs launching Capistrano's <tt>cap deploy</tt>
 
-Why? Because my friend Machal still cannot fix Capistrano on his Windows box. Because it could be cool.
+Why? Because my friend Machal still cannot fix Capistrano on his Windows box. Because it could be cool, what you think? :)
 
 A working experiment at the moment! AN APLHA! :)
+
+== What?
+
+Pushr assumes this:
+
+* You deploy a Rails application with Capistrano in standard settings
+* You have a "deploy" branch in your repo, which you deploy on production (and possibly deploy "master" on staging)
+* You have installed Capistrano et al. on the server you are deploying
+* You are willing and able to run a Ruby application open to teh internet on the same machine as your Rails application
 
 == Want to try it out?
 
 Install or update following Rubygems <b>on the local machine or server where you want to run it</b>:
 
-    $ sudo gem install sinatra rack haml capistrano
+    $ sudo gem install sinatra rack haml capistrano capistrano-ext
 
 Rename and edit the configuration file:
 
@@ -31,6 +40,7 @@ Then do a <tt>git push</tt> to the git repo. Your application is updated with Ca
 
 == Todos & Ideas
 
+* Deploy only when pushed to "deploy" branch
 * Notifications (Twitter, e-mail, Jabber, ...)
 * Improve deploy logging
 * List new revisions in "master" branch
