@@ -21,7 +21,11 @@ namespace :app do
     ensure
       Sinatra::Application.default_options.merge!(:run => false)
     end
-    
+  end
+  desc "Add public key for the user@server to 'itself' (so Cap can SSH to localhost)"
+  task :add_public_key_to_localhost do
+    # TODO : Ask for key name with Highline
+    `cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys`
   end
 end
 
