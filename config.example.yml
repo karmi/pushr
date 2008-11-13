@@ -2,3 +2,9 @@
 token: ~
 # Full path to your Rails application, eg. "/var/www/my_rails_app"
 path:  ~
+
+# Send notifications to Twitter
+# You'll probably want to protect the updates for this account
+twitter:
+  username: ~
+  password: ~

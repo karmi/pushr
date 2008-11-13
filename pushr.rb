@@ -20,7 +20,7 @@ class Pushr
     success    = (cap_output.to_s =~ /failed/).nil?
     twitter_message = (success) ? 'Successfully deployed an application!' : 'OMFG! There were errors when deploying the application! Check log or Pushr page!'
     # TODO : !OMFG! Refactor this into Notifiers, you hear me?
-    %x[curl --data status='#{twitter_message}' http://shortcat_deploy:gitit%21@twitter.com/statuses/update.json]
+    %x[curl --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
     { :success => success, :output  => cap_output }
   end
 end
