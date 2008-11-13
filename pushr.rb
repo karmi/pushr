@@ -10,12 +10,12 @@ CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unles
 
 # == Pushr class
 # Just wrapping logic somehow, at the moment.
-# TODO : Refactor into some proper code OMG!
+# TODO : Refactor into some proper code OMFG!
 class Pushr
   def info
-    revision_info = `cd #{CONFIG['path']}/shared/cached-copy; git log --pretty=format:'%h : %s [%ar by %an]' -n 1`
+    revision_info = `cd #{CONFIG['path']}/current; git log --pretty=format:'%h : %s [%ar by %an]' -n 1`
   end
-  def deploy
+  def deploy!
     cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap deploy:migrations 2>&1]
     { :success => (cap_output.to_s =~ /failed/).nil?,
       :output  => cap_output }
@@ -43,7 +43,7 @@ end
 
 # == Deploy!
 post '/' do
-  @info = Pushr.new.deploy
+  @info = Pushr.new.deploy!
   haml :deployed
 end
 
@@ -90,7 +90,7 @@ __END__
       = @info[:output]
 - else
   %div.failure
-    %h2 There were errors when deploying application!
+    %h2 There were errors when deploying the application!
     %pre
       = @info[:output]
 
@@ -111,9 +111,9 @@ div h2
 a
   :color #000
 div.success h2
-  :color green
+  :color #128B45
 div.failure h2
-  :color red
+  :color #E21F3A
 pre
   :color #444
   :font-size 95%
