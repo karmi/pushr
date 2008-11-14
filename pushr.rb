@@ -51,7 +51,7 @@ end
 
 # Log into file in production
 configure :production do
-  log = File.new(File.join( File.dirname(__FILE__), 'pushr.log'), "w")
+  log = File.new(File.join( File.dirname(__FILE__), 'sinatra.log'), "w")
   STDOUT.reopen(log)
   STDERR.reopen(log)
 end
