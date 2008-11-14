@@ -9,7 +9,7 @@ require 'yaml'
 CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unless defined? CONFIG
 
 # == Pushr class
-# Just wrapping logic somehow, at the moment.
+# Just wrapping the logic somehow, at the moment.
 class Pushr
 
   Struct.new('Repository', :revision, :message, :author, :when, :datetime) unless defined? Struct::Repository
@@ -17,7 +17,7 @@ class Pushr
   attr_reader :path, :application, :repository
 
   def initialize(path)
-    # TODO : Fail now if path invalid
+    raise ArgumentError, "File not found: #{path}" unless File.exists?(path)
     @path = path
     @application = ::CONFIG['application'] || "You really should set this to something"
     @repository  = repository_info
@@ -28,11 +28,14 @@ class Pushr
   def deploy!
     cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap deploy:migrations 2>&1]
     success    = (cap_output.to_s =~ /failed/).nil?
-    twitter_message = (success) ?
-      "Deployed #{application} with revision #{repository.revision} — #{repository.message.slice(0, 100)}" :
-      "FAIL! Deploying '#{application}' failed. Check log for details."
+    # ---> Twitter
     # TODO : Refactor, refactor, refactor!
-    %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
+    if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password']
+      twitter_message = (success) ?
+        "Deployed #{application} with revision #{repository.revision} — #{repository.message.slice(0, 100)}" :
+        "FAIL! Deploying '#{application}' failed. Check log for details."
+      %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
+    end
     # TODO : This still smells
     { :success => success, :output  => cap_output }
   end
@@ -68,7 +71,7 @@ end
 # == Deploy!
 post '/' do
   @pushr = Pushr.new(CONFIG['path'])
-  puts "* Let's deploy #{@pushr.application} now..."
+  puts "* Let's deploy '#{@pushr.application}' now..."
   @info = @pushr.deploy!
   haml :deployed
 end
