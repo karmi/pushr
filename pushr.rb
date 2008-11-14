@@ -30,7 +30,7 @@ class Pushr
     success    = (cap_output.to_s =~ /failed/).nil?
     # ---> Twitter
     # TODO : Refactor, refactor, refactor!
-    if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password']
+    if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password'].nil?
       twitter_message = (success) ?
         "Deployed #{application} with revision #{repository.revision} — #{repository.message.slice(0, 100)}" :
         "FAIL! Deploying #{application} failed. Check log for details."
