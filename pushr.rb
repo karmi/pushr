@@ -33,7 +33,7 @@ class Pushr
     if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password']
       twitter_message = (success) ?
         "Deployed #{application} with revision #{repository.revision} — #{repository.message.slice(0, 100)}" :
-        "FAIL! Deploying '#{application}' failed. Check log for details."
+        "FAIL! Deploying #{application} failed. Check log for details."
       %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
     end
     # TODO : This still smells
