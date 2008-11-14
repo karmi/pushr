@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'sinatra'
 require 'yaml'
+require 'logger'
 
 # = Pushr
 # Deploy Rails applications by Github Post-Receive URLs launching Capistrano's <tt>cap deploy</tt>
@@ -14,22 +15,38 @@ class Pushr
 
   Struct.new('Repository', :revision, :message, :author, :when, :datetime) unless defined? Struct::Repository
 
+  unless defined? LOGGER
+    LOGGER       = Logger.new(File.join(File.dirname(__FILE__), 'deploy.log'), 'weekly')
+    LOGGER.level = Logger::INFO
+  end
+
   attr_reader :path, :application, :repository
 
   def initialize(path)
-    raise ArgumentError, "File not found: #{path}" unless File.exists?(path)
+    log.fatal('Pushr.new') { "Path not valid: #{path}" } and raise ArgumentError, "File not found: #{path}" unless File.exists?(path)
     @path = path
     @application = ::CONFIG['application'] || "You really should set this to something"
     @repository  = repository_info
-    # puts self.inspect
-    # puts @repository.inspect
+  end
+
+  def log
+    LOGGER
   end
 
   def deploy!
+    # TODO : Refactor logging/notifying into Observers, obviously!
+    log.info(application) { "Deployment starting..." }
     cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap deploy:migrations 2>&1]
     success    = (cap_output.to_s =~ /failed/).nil?
+    # ---> Log
+    if success
+      log.info('[SUCCESS]')   { "Successfuly deployed application with revision #{repository.revision} (#{repository.message}). Capistrano output:" }
+      log.info('Capistrano') { cap_output.to_s }
+    else
+      log.warn('[FAILURE]')   { "Error when deploying application! Check Capistrano output below:" }
+      log.warn('Capistrano') { cap_output.to_s }
+    end
     # ---> Twitter
-    # TODO : Refactor, refactor, refactor!
     if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password'].nil?
       twitter_message = (success) ?
         "Deployed #{application} with revision #{repository.revision} — #{repository.message.slice(0, 100)}" :
@@ -37,12 +54,13 @@ class Pushr
       %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
     end
     # TODO : This still smells
-    { :success => success, :output  => cap_output }
+    { :success => success, :output  => cap_output.to_s }
   end
 
   private
 
   def repository_info
+    # FIXME : Obviously blows when you'd have a semicolon in commit message
     info = `cd #{path}/current; git log --pretty=format:'%h; %s; %an; %ar; %ci' -n 1`
     Struct::Repository.new( *info.split(/;\s{1}/) )
   end
@@ -51,9 +69,9 @@ end
 
 # Log into file in production
 configure :production do
-  log = File.new(File.join( File.dirname(__FILE__), 'sinatra.log'), "w")
-  STDOUT.reopen(log)
-  STDERR.reopen(log)
+  sinatra_log = File.new(File.join( File.dirname(__FILE__), 'sinatra.log'), "w")
+  STDOUT.reopen(sinatra_log)
+  STDERR.reopen(sinatra_log)
 end
 
 # Authorize all requests with the token set in <tt>config.yml</tt>
@@ -71,7 +89,6 @@ end
 # == Deploy!
 post '/' do
   @pushr = Pushr.new(CONFIG['path'])
-  puts "* Let's deploy '#{@pushr.application}' now..."
   @info = @pushr.deploy!
   haml :deployed
 end
@@ -134,7 +151,7 @@ __END__
   %div.failure
     %h2 There were errors when deploying the application!
     %pre
-      = @pushr[:output]
+      = @info[:output]
 
 @@ style
 body
