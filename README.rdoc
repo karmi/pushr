@@ -58,6 +58,6 @@ Then do a <tt>git push</tt> to the git repo. Your application is updated with Ca
 == Todos & Ideas
 
 * Deploy only when pushed to "deploy" branch [!]
+* Visualize deploy.log on webpage in a sparkline graph (succeeded/failed deploys, show relevant portion of deploy.log for each deploy, etc)
 * Improve & separate Notifications (Twitter, e-mail, Jabber, ...)
-* Improve deploy logging
 * List new revisions in "master" branch
