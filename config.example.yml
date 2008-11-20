@@ -11,3 +11,6 @@ path:  ~
 twitter:
   username: ~
   password: ~
+
+cap:
+  action: "deploy"
