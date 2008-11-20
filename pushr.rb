@@ -35,6 +35,7 @@ class Pushr
 
   def deploy!
     # TODO : Refactor logging/notifying into Observers, obviously!
+    CONFIG['cap']['action'] or raise "cap.action is a required setting"
     log.info(application) { "Deployment starting..." }
     cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap #{CONFIG['cap']['action']} 2>&1]
     success    = (cap_output.to_s =~ /failed/).nil?
