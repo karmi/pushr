@@ -136,8 +136,6 @@ end
 # == Get info
 get '/' do
   @pushr = Pushr.new(CONFIG['path'])
-  @git_version  = @pushr.git_version
-  @live_version = @pushr.live_version
 
   haml :info
 end
@@ -186,8 +184,6 @@ __END__
       = @pushr.repository.when
     by
     = @pushr.repository.author
-  %p
-    = @git_version + " => " + @live_version
   %p
     %form{ :action => "/", :method => 'post', :onsubmit => "this.submit.disabled='true'" }
       %input{ 'type' => 'hidden', 'name' => 'token', 'value' => CONFIG['token'] }
