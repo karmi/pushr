@@ -45,6 +45,14 @@ class Pushr
     `cd #{repo} && #{action}`
   end
 
+  def git_version
+    in_repo "git rev-list HEAD --max-count=1"
+  end
+
+  def live_version 
+    in_path "git rev-list HEAD --max-count=1"
+  end
+
   def deploy!
     # TODO : Refactor logging/notifying into Observers, obviously!
     CONFIG['cap']['action'] or raise "cap.action is a required setting"
@@ -62,13 +70,13 @@ class Pushr
 
     log.info(application) { "Checking versions..." }
 
-    git_version  = in_repo "git rev-list HEAD --max-count=1"
-    live_version = in_path "git rev-list HEAD --max-count=1"
     
     if(git_version == live_version)
       #TODO: allow force option to re-deploy same version
       log.fatal(application){ 'No updates found' }
+      raise "No upgrade required."
     end
+    log.info("let's update from #{live_version} to #{git_version}")
 
     historical = in_repo('git rev-list HEAD').split.grep live_version
     if not historical
@@ -101,7 +109,7 @@ class Pushr
   private
 
   def repository_info
-    sep = ' ;;;; '
+    sep = ' ;;;;; '
     info = in_path " git log --pretty='format:%h#{sep}%s#{sep}%an#{sep}%ar#{sep}%ci' -n 1 "
     Struct::Repository.new( *info.split(/#{sep}/) )
   end
@@ -122,12 +130,15 @@ before do
 end
 
 error do 
-  'Sorry there was a nasty error - ' + request.env['sinatra.error'].inspect
+  request.env['sinatra.error'].to_s
 end
 
 # == Get info
 get '/' do
   @pushr = Pushr.new(CONFIG['path'])
+  @git_version  = @pushr.git_version
+  @live_version = @pushr.live_version
+
   haml :info
 end
 
@@ -175,6 +186,8 @@ __END__
       = @pushr.repository.when
     by
     = @pushr.repository.author
+  %p
+    = @git_version + " => " + @live_version
   %p
     %form{ :action => "/", :method => 'post', :onsubmit => "this.submit.disabled='true'" }
       %input{ 'type' => 'hidden', 'name' => 'token', 'value' => CONFIG['token'] }
