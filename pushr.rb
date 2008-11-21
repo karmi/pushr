@@ -33,12 +33,52 @@ class Pushr
     LOGGER
   end
 
+  def repo
+    CONFIG['repository']
+  end
+
+  def in_path(action)
+    `cd #{path}/shared/cached-copy && #{action}`
+  end
+
+  def in_repo(action)
+    `cd #{repo} && #{action}`
+  end
+
   def deploy!
     # TODO : Refactor logging/notifying into Observers, obviously!
     CONFIG['cap']['action'] or raise "cap.action is a required setting"
+    
+    log.info(application) { "Downloading updates..." }
+
+    git_output   = in_repo "git pull"
+    # WARNING: it's still possible to get a race condition if several
+    # patches are checked in quickly-- deploy.rb might get run from
+    # version N, and the deployment might deploy newer code version N+1
+    # Usually this won't matter, since deploy.rb probably doesn't change
+    # But if you think that this might cause problems, in deploy.rb
+    # "set :repository" to pushr's local repository, so only pushr is connecting
+    # to the outside world.
+
+    log.info(application) { "Checking versions..." }
+
+    git_version  = in_repo "git rev-list HEAD --max-count=1"
+    live_version = in_path "git rev-list HEAD --max-count=1"
+    
+    if(git_version == live_version)
+      #TODO: allow force option to re-deploy same version
+      log.fatal(application){ 'No updates found' }
+    end
+
+    historical = in_repo('git rev-list HEAD').split.grep live_version
+    if not historical
+      log.fatal(application){ 'Your deployed app is not an ancestor of your repository HEAD!' }
+    end
+    
     log.info(application) { "Deployment starting..." }
-    cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap #{CONFIG['cap']['action']} 2>&1]
-    success    = (cap_output.to_s =~ /failed/).nil?
+
+    cap_output = in_repo "cap #{CONFIG['cap']['action']} 2>&1"
+    success    = (cap_output.to_s =~ /failed/).nil? && ! cap_output.empty?
     # ---> Log
     if success
       log.info('[SUCCESS]')   { "Successfuly deployed application with revision #{repository.revision} (#{repository.message}). Capistrano output:" }
@@ -61,9 +101,9 @@ class Pushr
   private
 
   def repository_info
-    # FIXME : Obviously blows when you'd have a semicolon in commit message
-    info = `cd #{path}/current; git log --pretty=format:'%h; %s; %an; %ar; %ci' -n 1`
-    Struct::Repository.new( *info.split(/;\s{1}/) )
+    sep = ' ;;;; '
+    info = in_path " git log --pretty='format:%h#{sep}%s#{sep}%an#{sep}%ar#{sep}%ci' -n 1 "
+    Struct::Repository.new( *info.split(/#{sep}/) )
   end
 
 end
@@ -79,6 +119,10 @@ end
 before do
   throw :halt, [404, "Not configured\n"] and return if not CONFIG['token'] or CONFIG['token'].nil?
   throw :halt, [500, "You did wrong.\n"] and return unless params[:token] && params[:token] == CONFIG['token']
+end
+
+error do 
+  'Sorry there was a nasty error - ' + request.env['sinatra.error'].inspect
 end
 
 # == Get info
