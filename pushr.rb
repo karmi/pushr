@@ -9,112 +9,139 @@ require 'logger'
 
 CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unless defined? CONFIG
 
-# == Pushr class
-# Just wrapping the logic somehow, at the moment.
-class Pushr
-
-  Struct.new('Repository', :revision, :message, :author, :when, :datetime) unless defined? Struct::Repository
-
+# == Pushr module
+# Wrap classes into a separate namespace.
+module Pushr
+  
   unless defined? LOGGER
     LOGGER       = Logger.new(File.join(File.dirname(__FILE__), 'deploy.log'), 'weekly')
     LOGGER.level = Logger::INFO
   end
 
-  attr_reader :path, :application, :repository
-
-  def initialize(path)
-    log.fatal('Pushr.new') { "Path not valid: #{path}" } and raise ArgumentError, "File not found: #{path}" unless File.exists?(path)
-    @path = path
-    @application = ::CONFIG['application'] || "You really should set this to something"
-    @repository  = repository_info
-  end
-
-  def log
-    LOGGER
-  end
-
-  def repo
-    CONFIG['repository']
-  end
-
-  def in_path(action)
-    `cd #{path}/shared/cached-copy && #{action}`
-  end
-
-  def in_repo(action)
-    `cd #{repo} && #{action}`
-  end
-
-  def git_version
-    in_repo "git rev-list HEAD --max-count=1"
-  end
-
-  def live_version 
-    in_path "git rev-list HEAD --max-count=1"
-  end
-
-  def deploy!
-    # TODO : Refactor logging/notifying into Observers, obviously!
-    CONFIG['cap']['action'] or raise "cap.action is a required setting"
+  # == Pushr class
+  # Just wrapping the logic somehow, at the moment.
+  class Pushr
     
-    log.info(application) { "Downloading updates..." }
+    attr_accessor :applications
 
-    git_output   = in_repo "git pull"
-    # WARNING: it's still possible to get a race condition if several
-    # patches are checked in quickly-- deploy.rb might get run from
-    # version N, and the deployment might deploy newer code version N+1
-    # Usually this won't matter, since deploy.rb probably doesn't change
-    # But if you think that this might cause problems, in deploy.rb
-    # "set :repository" to pushr's local repository, so only pushr is connecting
-    # to the outside world.
-
-    log.info(application) { "Checking versions..." }
-
-    
-    if(git_version == live_version)
-      #TODO: allow force option to re-deploy same version
-      log.fatal(application){ 'No updates found' }
-      raise "No upgrade required."
+    def initialize(applications)
+      @applications = applications.collect { |app| Application.new(app) }
     end
-    log.info("let's update from #{live_version} to #{git_version}")
 
-    historical = in_repo('git rev-list HEAD').split.grep live_version
-    if not historical
-      log.fatal(application){ 'Your deployed app is not an ancestor of your repository HEAD!' }
+    def deploy!
+      output = applications.inject([]) do |output, app|
+        output << "#{app.name}\n========================================"
+        output << application.deploy!
+        output
+      end
+      
+      { :success => success, :output  => output.join("\n") }
+    end
+
+  end # end Pushr class
+
+  class Application
+    attr_reader :path, :name, :repository, :config
+    
+    Struct.new('Repository', :revision, :message, :author, :when, :datetime) unless defined? Struct::Repository
+
+    def initialize(app)
+      path = app['path']
+      log.fatal('Pushr::Application.new') { "Path not valid: #{path}" } and raise ArgumentError, "File not found: #{path}" unless File.exists?(path)
+      @config = app
+      @path = path
+      @name = app['name'] || "You really should set this to something"
+      @repository  = repository_info
     end
     
-    log.info(application) { "Deployment starting..." }
-
-    cap_output = in_repo "cap #{CONFIG['cap']['action']} 2>&1"
-    success    = (cap_output.to_s =~ /failed/).nil? && ! cap_output.empty?
-    # ---> Log
-    if success
-      log.info('[SUCCESS]')   { "Successfuly deployed application with revision #{repository.revision} (#{repository.message}). Capistrano output:" }
-      log.info('Capistrano') { cap_output.to_s }
-    else
-      log.warn('[FAILURE]')   { "Error when deploying application! Check Capistrano output below:" }
-      log.warn('Capistrano') { cap_output.to_s }
+    def log
+      LOGGER
     end
-    # ---> Twitter
-    if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password'].nil?
-      twitter_message = (success) ?
-        "Deployed #{application} with revision #{repository.revision} — #{repository.message.slice(0, 100)}" :
-        "FAIL! Deploying #{application} failed. Check log for details."
-      %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
+    
+    def repo
+      config['repository']
     end
-    # TODO : This still smells
-    { :success => success, :output  => cap_output.to_s }
-  end
+    
+    def in_path(action)
+      `cd #{path}/shared/cached-copy && #{action}`
+    end
+    
+    def in_repo(action)
+      `cd #{repo} && #{action}`
+    end
 
-  private
+    def git_version
+      in_repo "git rev-list HEAD --max-count=1"
+    end
 
-  def repository_info
-    sep = ' ;;;;; '
-    info = in_path " git log --pretty='format:%h#{sep}%s#{sep}%an#{sep}%ar#{sep}%ci' -n 1 "
-    Struct::Repository.new( *info.split(/#{sep}/) )
-  end
+    def live_version 
+      in_path "git rev-list HEAD --max-count=1"
+    end
+    
+    def deploy!
+      # TODO : Refactor logging/notifying into Observers, obviously!
+      config['cap']['action'] or raise "cap.action is a required setting"
+    
+      log.info(name) { "Downloading updates..." }
 
-end
+      git_output   = in_repo "git pull"
+      # WARNING: it's still possible to get a race condition if several
+      # patches are checked in quickly-- deploy.rb might get run from
+      # version N, and the deployment might deploy newer code version N+1
+      # Usually this won't matter, since deploy.rb probably doesn't change
+      # But if you think that this might cause problems, in deploy.rb
+      # "set :repository" to pushr's local repository, so only pushr is connecting
+      # to the outside world.
+
+      log.info(name) { "Checking versions..." }
+
+    
+      if(git_version == live_version)
+        #TODO: allow force option to re-deploy same version
+        log.fatal(name){ 'No updates found' }
+        return "No upgrade required."
+      end
+      log.info("let's update from #{live_version} to #{git_version}")
+
+      historical = in_repo('git rev-list HEAD').split.grep live_version
+      if not historical
+        log.fatal(name){ 'Your deployed app is not an ancestor of your repository HEAD!' }
+      end
+    
+      log.info(name) { "Deployment starting..." }
+
+      cap_output = in_repo "cap #{config['cap']['action']} 2>&1"
+      success    = (cap_output.to_s =~ /failed/).nil? && ! cap_output.empty?
+      # ---> Log
+      if success
+        log.info('[SUCCESS]')   { "Successfuly deployed application with revision #{repository.revision} (#{repository.message}). Capistrano output:" }
+        log.info('Capistrano') { cap_output.to_s }
+      else
+        log.warn('[FAILURE]')   { "Error when deploying application! Check Capistrano output below:" }
+        log.warn('Capistrano') { cap_output.to_s }
+      end
+      # ---> Twitter
+      if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password'].nil?
+        twitter_message = (success) ?
+          "Deployed #{name} with revision #{repository.revision} — #{repository.message.slice(0, 100)}" :
+          "FAIL! Deploying #{name} failed. Check log for details."
+        %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
+      end
+      
+      return cap_output.to_s
+    end
+    
+    private
+    
+    def repository_info
+      sep = ' ;;;;; '
+      info = in_path " git log --pretty='format:%h#{sep}%s#{sep}%an#{sep}%ar#{sep}%ci' -n 1 "
+      Struct::Repository.new( *info.split(/#{sep}/) )
+    end
+  end # end Application class
+
+end # end Pushr module
+
 
 # Log into file in production
 configure :production do
@@ -135,14 +162,14 @@ end
 
 # == Get info
 get '/' do
-  @pushr = Pushr.new(CONFIG['path'])
+  @pushr = Pushr::Pushr.new(CONFIG['path'])
 
   haml :info
 end
 
 # == Deploy!
 post '/' do
-  @pushr = Pushr.new(CONFIG['path'])
+  @pushr = Pushr::Pushr.new(CONFIG['path'])
   @info = @pushr.deploy!
   haml :deployed
 end
@@ -159,7 +186,7 @@ __END__
 @@ layout
 %html
   %head
-    %title= "[pushr] #{CONFIG['application']}"
+    %title= "[pushr] #{CONFIG['name']}"
     %meta{ 'http-equiv' => 'Content-Type', :content => 'text/html;charset=utf-8' }
     %link{ :rel => 'stylesheet', :type => 'text/css', :href => "/style.css?token=#{CONFIG['token']}" }
   %body
@@ -167,23 +194,24 @@ __END__
 
 @@ info
 %div.info
-  %p
-    Last deployed revision of
-    %strong
-      %em
-        = @pushr.application
-    is
-    %strong
-      = @pushr.repository.revision
-    \:
-    %strong
-      %em
-        = @pushr.repository.message
-    committed
-    %strong
-      = @pushr.repository.when
-    by
-    = @pushr.repository.author
+  - @pushr.application.each do |app|
+    %p
+      Last deployed revision of
+      %strong
+        %em
+          = app.name
+      is
+      %strong
+        = app.repository.revision
+      \:
+      %strong
+        %em
+          = app.repository.message
+      committed
+      %strong
+        = app.repository.when
+      by
+    = app.repository.author
   %p
     %form{ :action => "/", :method => 'post', :onsubmit => "this.submit.disabled='true'" }
       %input{ 'type' => 'hidden', 'name' => 'token', 'value' => CONFIG['token'] }
@@ -194,7 +222,7 @@ __END__
 - if @info[:success]
   %div.success
     %h2
-      Application deployed successfully.
+      Application(s) deployed successfully.
     %form{ 'action' => "", :method => 'get' }
       %input{ 'type' => 'hidden', 'name' => 'token', 'value' => CONFIG['token'] }
       %p

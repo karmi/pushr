@@ -1,12 +1,19 @@
-# Set name of your application
-application: Awesome
+# Describe this Pushr instance
+name: Awesome
+
+# Configure multiple application here.
+applications:
+    # Set name of your application
+  - name: Awesome
+    # Full path to your Rails application, eg. "/var/www/my_rails_app"
+    path: ~
+    # a repository that's set up to git pull
+    repository: ~
+    cap:
+      action: "deploy"
 
 # Set to some reasonably safe password. Requests are authorized by this.
 token: ~
-# Full path to your Rails application, eg. "/var/www/my_rails_app"
-path:  ~
-# a repository that's set up to git pull
-repository: ~
 
 # Send notifications to Twitter
 # You'll probably want to protect the updates for this account
@@ -14,5 +21,3 @@ twitter:
   username: ~
   password: ~
 
-cap:
-  action: "deploy"
