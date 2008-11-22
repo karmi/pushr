@@ -38,7 +38,9 @@ namespace :start do
 
   desc "Start application in production mode"
   task :production do
-    system "nohup ruby pushr.rb -p 4000 -e production &"
+    port = ENV['PORT'] || 4000
+    puts "Starting Pushr on port #{port}..."
+    system "nohup ruby pushr.rb -p #{port} -e production &"
   end
 
 end
