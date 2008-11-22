@@ -29,13 +29,16 @@ module Pushr
     end
 
     def deploy!
+      success = true
       output = applications.inject([]) do |output, app|
-        output << "#{app.name}\n========================================"
-        output << application.deploy!
+        output << "#{app.name}&#x000A;========================================"
+        app_success, app_output = app.deploy!
+        output << app_output
+        success = false unless app_success 
         output
       end
       
-      { :success => success, :output  => output.join("\n") }
+      { :success => success, :output  => output.join("&#x000A;") }
     end
 
   end # end Pushr class
@@ -128,7 +131,7 @@ module Pushr
         %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
       end
       
-      return cap_output.to_s
+      return [success, cap_output.to_s]
     end
     
     private
@@ -162,14 +165,14 @@ end
 
 # == Get info
 get '/' do
-  @pushr = Pushr::Pushr.new(CONFIG['path'])
+  @pushr = Pushr::Pushr.new(CONFIG['applications'])
 
   haml :info
 end
 
 # == Deploy!
 post '/' do
-  @pushr = Pushr::Pushr.new(CONFIG['path'])
+  @pushr = Pushr::Pushr.new(CONFIG['applications'])
   @info = @pushr.deploy!
   haml :deployed
 end
@@ -194,7 +197,7 @@ __END__
 
 @@ info
 %div.info
-  - @pushr.application.each do |app|
+  - @pushr.applications.each do |app|
     %p
       Last deployed revision of
       %strong
