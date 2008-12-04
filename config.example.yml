@@ -6,6 +6,8 @@ username: ~
 password: ~
 # Full path to your Rails application, eg. "/var/www/my_rails_app"
 path:  ~
+# Capistrano command (defaults to `cap deploy:migrations` if not set)
+cap_command: ~
 
 # Send notifications to Twitter
 # You'll probably want to protect the updates for this account

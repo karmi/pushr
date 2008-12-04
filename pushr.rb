@@ -35,8 +35,9 @@ class Pushr
 
   def deploy!
     # TODO : Refactor logging/notifying into Observers, obviously!
+    cap_command = CONFIG['cap_command'] || 'deploy:migrations'
     log.info(application) { "Deployment starting..." }
-    cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap deploy:migrations 2>&1]
+    cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap #{cap_command} 2>&1]
     success    = (cap_output.to_s =~ /failed/).nil?
     # ---> Log
     if success
