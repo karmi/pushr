@@ -60,9 +60,8 @@ class Pushr
   private
 
   def repository_info
-    # FIXME : Obviously blows when you'd have a semicolon in commit message
-    info = `cd #{path}/current; git log --pretty=format:'%h; %s; %an; %ar; %ci' -n 1`
-    Struct::Repository.new( *info.split(/;\s{1}/) )
+    info = `cd #{path}/current; git log --pretty=format:'%h --|-- %s --|-- %an --|-- %ar --|-- %ci' -n 1`
+    Struct::Repository.new( *info.split(/\s{1}--\|--\s{1}/) )
   end
 
 end
