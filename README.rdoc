@@ -57,6 +57,8 @@ Then do a <tt>git push</tt> to the git repo. Your application is updated with Ca
 
 == Todos
 
+* [!] Run Pushr with Thin, so it's easily controllable by start|stop|restart
+
 * Visualize deploy.log on webpage in a sparkline graph (succeeded/failed deploys, show relevant portion of deploy.log for each deploy, etc)
 
 * Improve & separate Notifications (Twitter, e-mail, Jabber, ...)
