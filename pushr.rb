@@ -9,8 +9,7 @@ require 'logger'
 
 CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unless defined? CONFIG
 
-# == Pushr class
-# Just wrapping the logic somehow, at the moment.
+# == Pushr class wraps everything
 class Pushr
 
   Struct.new('Repository', :revision, :message, :author, :when, :datetime) unless defined? Struct::Repository
@@ -33,19 +32,22 @@ class Pushr
     LOGGER
   end
 
-  def deploy!
-    # TODO : Refactor logging/notifying into Observers, obviously!
+  def deploy!(force=false)
+    if uptodate? # Do not deploy if up-to-date (eg. push was to other branch)
+      log.info('Pushr') { "No updates for application found" } and return {:success => false, :output => 'Application is uptodate'}
+    end unless force
     cap_command = CONFIG['cap_command'] || 'deploy:migrations'
     log.info(application) { "Deployment starting..." }
-    cap_output = %x[cd #{CONFIG['path']}/shared/cached-copy; cap #{cap_command} 2>&1]
-    success    = (cap_output.to_s =~ /failed/).nil?
+    cap_output = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
+    success    = (cap_output.to_s =~ /fail/).nil?
+    # TODO : Refactor logging/notifying into Observers, obviously!
     # ---> Log
     if success
       log.info('[SUCCESS]')   { "Successfuly deployed application with revision #{repository.revision} (#{repository.message}). Capistrano output:" }
-      log.info('Capistrano') { cap_output.to_s }
+      log.info('Capistrano')  { cap_output.to_s }
     else
       log.warn('[FAILURE]')   { "Error when deploying application! Check Capistrano output below:" }
-      log.warn('Capistrano') { cap_output.to_s }
+      log.warn('Capistrano')  { cap_output.to_s }
     end
     # ---> Twitter
     if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password'].nil?
@@ -63,6 +65,13 @@ class Pushr
   def repository_info
     info = `cd #{path}/current; git log --pretty=format:'%h --|-- %s --|-- %an --|-- %ar --|-- %ci' -n 1`
     Struct::Repository.new( *info.split(/\s{1}--\|--\s{1}/) )
+  end
+
+  def uptodate?
+    info = `cd #{path}/current; git fetch -q origin deploy 2>&1`
+    log.fatal('git fetch -q origin') { "Error while checking if app up-to-date: #{info}" } and return false unless $?.success?
+    log.info('Pushr') { "Fetched new revisions from remote..." }
+    return info.strip == '' # Blank output => No updates from git remote
   end
 
 end
@@ -104,7 +113,7 @@ end
 # == Deploy!
 post '/' do
   @pushr = Pushr.new(CONFIG['path'])
-  @info = @pushr.deploy!
+  @info = @pushr.deploy!(params[:force])
   haml :deployed
 end
 
@@ -123,7 +132,7 @@ __END__
   %head
     %title= "[pushr] #{CONFIG['application']}"
     %meta{ 'http-equiv' => 'Content-Type', :content => 'text/html;charset=utf-8' }
-    %link{ :rel => 'stylesheet', :type => 'text/css', :href => "/style.css?token=#{CONFIG['token']}" }
+    %link{ :rel => 'stylesheet', :type => 'text/css', :href => "/style.css" }
   %body
     = yield
 
@@ -148,7 +157,7 @@ __END__
     = @pushr.repository.author
   %p
     %form{ :action => "/", :method => 'post', :onsubmit => "this.submit.disabled='true'" }
-      %input{ 'type' => 'hidden', 'name' => 'token', 'value' => CONFIG['token'] }
+      %input{ 'type' => 'hidden', 'name' => 'force', 'value' => true }
       %input{ 'type' => 'submit', 'value' => 'Deploy!', 'name' => 'submit', :id => 'submit' }
 
 
@@ -158,7 +167,6 @@ __END__
     %h2
       Application deployed successfully.
     %form{ 'action' => "", :method => 'get' }
-      %input{ 'type' => 'hidden', 'name' => 'token', 'value' => CONFIG['token'] }
       %p
         %input{ 'type' => 'submit', 'value' => 'Return to index' }
     %pre
