@@ -35,7 +35,7 @@ class Pushr
   def deploy!(force=false)
     if uptodate? # Do not deploy if up-to-date (eg. push was to other branch)
       log.info('Pushr') { "No updates for application found" } and return {:success => false, :output => 'Application is uptodate'}
-    end unless force
+    end unless force == 'true'
     cap_command = CONFIG['cap_command'] || 'deploy:migrations'
     log.info(application) { "Deployment starting..." }
     cap_output = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
@@ -157,7 +157,7 @@ __END__
     = @pushr.repository.author
   %p
     %form{ :action => "/", :method => 'post', :onsubmit => "this.submit.disabled='true'" }
-      %input{ 'type' => 'hidden', 'name' => 'force', 'value' => true }
+      %input{ 'type' => 'hidden', 'name' => 'force', 'value' => 'true' }
       %input{ 'type' => 'submit', 'value' => 'Deploy!', 'name' => 'submit', :id => 'submit' }
 
 
