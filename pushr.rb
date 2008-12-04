@@ -4,7 +4,7 @@ require 'yaml'
 require 'logger'
 
 # = Pushr
-# Deploy Rails applications by Github Post-Receive URLs launching Capistrano's <tt>cap deploy</tt>
+# Deploy Rails applications by Github Post-Receive URLs launching Capistrano's commands
 # An experiment.
 
 CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unless defined? CONFIG
@@ -73,10 +73,25 @@ configure :production do
   STDERR.reopen(sinatra_log)
 end
 
-# Authorize all requests with the token set in <tt>config.yml</tt>
+# Authorize all requests with username/password set in <tt>config.yml</tt>
 before do
-  throw :halt, [404, "Not configured\n"] and return if not CONFIG['token'] or CONFIG['token'].nil?
-  throw :halt, [500, "You did wrong.\n"] and return unless params[:token] && params[:token] == CONFIG['token']
+  throw :halt, [404, "Not configured\n"] and return unless configured?
+  headers('WWW-Authenticate' => %(Basic realm="[pushr] #{CONFIG['application']}")) and \
+  throw(:halt, [401, "Not authorized\n"]) and \
+  return unless authorized?
+end
+
+helpers do
+
+  def authorized?
+    @auth ||=  Rack::Auth::Basic::Request.new(request.env) { |username, password| username == 'admin' && password == 'secret' }
+    @auth.provided? && @auth.basic? && @auth.credentials && @auth.credentials.first == CONFIG['username'] && @auth.credentials.last == CONFIG['password']
+  end
+
+  def configured?
+    CONFIG['username'] && !CONFIG['username'].nil? && CONFIG['password'] && !CONFIG['password'].nil?
+  end
+
 end
 
 # == Get info
@@ -92,6 +107,7 @@ post '/' do
   haml :deployed
 end
 
+# == Look nice
 get '/style.css' do
   content_type 'text/css', :charset => 'utf-8'
   sass :style
