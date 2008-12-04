@@ -68,7 +68,7 @@ class Pushr
   end
 
   def uptodate?
-    info = `cd #{path}/cached-copy; git fetch -q origin deploy 2>&1`
+    info = `cd #{path}/shared/cached-copy; git fetch -q origin 2>&1`
     log.fatal('git fetch -q origin') { "Error while checking if app up-to-date: #{info}" } and return false unless $?.success?
     log.info('Pushr') { "Fetched new revisions from remote..." }
     return info.strip == '' # Blank output => No updates from git remote
