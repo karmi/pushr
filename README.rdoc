@@ -57,10 +57,6 @@ Then do a <tt>git push</tt> to the git repo. Your application is updated with Ca
 
 == Todos
 
-* [!] Implement HTTP-Auth while Github can do it now (http://github.com/blog/237-basic-auth-post-receives)
-
-* [!] Deploy only when pushed to "deploy" branch
-
 * Visualize deploy.log on webpage in a sparkline graph (succeeded/failed deploys, show relevant portion of deploy.log for each deploy, etc)
 
 * Improve & separate Notifications (Twitter, e-mail, Jabber, ...)
