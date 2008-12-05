@@ -40,6 +40,7 @@ namespace :app do
       require 'haml'
       require 'sass'
       require 'capistrano'
+      require 'thin'
       puts "\n[*] Good! You seem to have all the neccessary gems for Pushr"
     rescue LoadError => e
       puts "[!] Bad! Some gems for Pushr are missing!"
