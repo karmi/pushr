@@ -1,12 +1,13 @@
 = Pushr
 
-Deploy Rails applications by Github Post-Receive URLs launching Capistrano's <tt>cap deploy</tt>
+Deploy Rails applications by Github Post-Receive URLs launching Capistrano's tasks (<tt>cap deploy</tt>, <tt>cap staging deploy</tt>)
 
-Why? Because my friend Machal still cannot fix Capistrano on his Windows box and can now deploy with _GitGUI_. (No need to launch "DOS" for him when only thing he did is fixing some CSS or updating some assets.)
+Why? Because my friend Machal still cannot fix Capistrano on his Windows box and can now deploy with _GitGUI_.
+(No need to launch "DOS" for him when only thing he did is fixing some CSS or updating some assets.)
 
 Because it could be cool, what you think?
 
-It's a working experiment at the moment! AN APLHA! :) Obviously, do not use on mission critical deployments.
+Obviously, do not use on mission critical deployments :)
 
 
 == What?
@@ -22,42 +23,52 @@ Pushr assumes this:
 * You have tests for your application and you run them in Capistrano <tt>before</tt> hook (so you don't end up deploying breakz)
 * You have set a <i>post-receive</i> hook for your repository, calling specific URL. See section below for Github guide.
 
-Pushr calls Capistrano's <tt>cap deploy</tt> task whenever you push to the repository with the hook.
+Pushr calls Capistrano's deploy task specified in <tt>config.yml</tt> (or <tt>deploy:migrations</tt> by default)
+whenever you push to the repository with the hook.
 
 Currently it logs the output into a file and updates status for configured Twitter account. Other notifications? Sure, later.
 
-You can also deploy by literally pushing a button on Pushr's page.
+You can also deploy by literally pushing a button in Pushr's web-interface.
 
 
 == Want to try it out?
 
 Install or update following Rubygems <b>on the local machine or server where you want to run it</b>:
 
-    $ sudo gem install sinatra rack haml capistrano capistrano-ext
+    $ sudo gem install sinatra rack haml capistrano capistrano-ext thin
 
 Rename and edit the configuration file:
 
     $ cp config.example.yml config.yml
     $ vim config.yml
 
-Run the app in production (nohup):
+Run the app in development mode:
 
-    rake start:production
+    rake
     
-Set up Github Post-Receive URL (http://github.com/guides/post-receive-hooks) in your repo's administration to:
+Set up *Github Post-Receive URL* (http://github.com/guides/post-receive-hooks) in your repo's administration to:
 
-    http://{YOUR SERVER}:4000?token={TOKEN SET IN CONFIG}
+    http://{USERNAME SET IN CONFIG}:{PASSWORD SET IN CONFIG}@{YOUR SERVER}:4000
     
-Load the URL in the browser. You should see some info about deployed revision.
+Load the URL in the browser. Fill the ugly HTTP-Auth box with the credentials from <tt>config.yml</tt>.
+You should see some info about deployed revision.
     
-Then do a <tt>git push</tt> to the git repo. Your application is updated with Capistrano. Done.
+Click "Test Hook" at Github or do a <tt>git push</tt> to the git repo. You should see something POSTed in your terminal. 
+Your application is updated with Capistrano. Done.
 
 (Of course, you can use Git's post-receive hook in any repo, not just on Github. You would be <tt>curl</tt>-ing that URL or something like that then.)
 
+If you're satisfied with what you see, you should run and control Pushr backed-up with Thin by <tt>rake start</tt>/<tt>rake stop</tt>.
+
+Follow Twitter username you set in <tt>config.yml</tt> on Twitter for notifications. Run <tt>tail -f deploy.log</tt> to see what's really going on.
+
+
+== More information
+
+Get more information in introductory post @ http://www.restafari.org/pushr-or-the-application-will-deploy-itself.html
+
 
 == Todos
-
-* [!] Run Pushr with Thin, so it's easily controllable by start|stop|restart
 
 * Visualize deploy.log on webpage in a sparkline graph (succeeded/failed deploys, show relevant portion of deploy.log for each deploy, etc)
 

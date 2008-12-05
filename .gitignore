@@ -3,4 +3,5 @@
 *.log
 *.pid
 *.log.*
+doc
 config.yml
