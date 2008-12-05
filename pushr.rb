@@ -76,13 +76,6 @@ class Pushr
 
 end
 
-# Log into file in production
-configure :production do
-  sinatra_log = File.new(File.join( File.dirname(__FILE__), 'sinatra.log'), "w")
-  STDOUT.reopen(sinatra_log)
-  STDERR.reopen(sinatra_log)
-end
-
 # Authorize all requests with username/password set in <tt>config.yml</tt>
 before do
   throw :halt, [404, "Not configured\n"] and return unless configured?
