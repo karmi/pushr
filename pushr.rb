@@ -87,7 +87,7 @@ end
 helpers do
 
   def authorized?
-    @auth ||=  Rack::Auth::Basic::Request.new(request.env) { |username, password| username == 'admin' && password == 'secret' }
+    @auth ||=  Rack::Auth::Basic::Request.new(request.env)
     @auth.provided? && @auth.basic? && @auth.credentials && @auth.credentials.first == CONFIG['username'] && @auth.credentials.last == CONFIG['password']
   end
 
