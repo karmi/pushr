@@ -40,6 +40,7 @@ class Pushr
     log.info(application) { "Deployment #{"(force) " if force == 'true' }starting..." }
     cap_output = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
     success    = (cap_output.to_s =~ /fail/).nil?
+    @repository = repository_info # Update repository info
     # TODO : Refactor logging/notifying into Observers, obviously!
     # ---> Log
     if success
