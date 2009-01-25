@@ -79,9 +79,9 @@ end
 
 # Authorize all requests with username/password set in <tt>config.yml</tt>
 before do
-  throw :halt, [404, "Not configured\n"] and return unless configured?
-  headers('WWW-Authenticate' => %(Basic realm="[pushr] #{CONFIG['application']}")) and \
-  throw(:halt, [401, "Not authorized\n"]) and \
+  halt [404, "Not configured\n"] and return unless configured?
+  response['WWW-Authenticate'] = %(Basic realm="[pushr] #{CONFIG['application']}") and \
+  halt([401, "Not authorized\n"]) and \
   return unless authorized?
 end
 
@@ -116,8 +116,6 @@ get '/style.css' do
   content_type 'text/css', :charset => 'utf-8'
   sass :style
 end
-
-use_in_file_templates!
 
 __END__
 
