@@ -11,13 +11,17 @@ path:  ~
 # * Capistrano command (defaults to `cap deploy:migrations` if not set)
 cap_command: ~
 
-# * Setup notifications
+# * Setup notifications (http://github.com/karmi/pushr_notifiers)
 # notifiers_path: "../somewhere/else" # Set this if your notifiers are not in ../pushr_notifiers
 notifiers:
   # You'll probably want to protect the updates for this Twitter account :)
   - twitter:
      username: ~
      password: ~
-  # IRC is also possible, see http://github.com/karmi/pushr_notifiers/blob/master/irc.rb
+  # For IRC see http://github.com/karmi/pushr_notifiers/blob/master/irc.rb
   # - irc:
   #      uri: 'irc://irc.freenode.net:6667/test'
+  # For XMPP see http://github.com/karmi/pushr_notifiers/blob/master/jabber.rb
+  # - jabber:
+  #      username: ~
+  #      password: ~
