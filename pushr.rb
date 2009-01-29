@@ -33,33 +33,45 @@ module Pushr
     # Inherit from this class in your notifiers
     # See eg. http://github.com/karmi/pushr_notifiers/blob/master/irc.rb
     class Base
-      def deliver!
-        raise NoMethodError, "you need to implement this method in your notifier"
-      end
-      def configured?
-        false
-      end
-    end
 
-    # Twitter notifications (default)
-    class Twitter < Base
+      include Pushr::Logger
 
       attr_reader :config
 
       def initialize(config={})
         @config = config
-        Pushr::Logger::LOGGER.fatal('Twitter notifier') { "Twitter not configured" } unless configured?
+        log.fatal("#{self.class.name}") { "Notifier not configured!" } unless configured?
       end
+
+      # Implement this method for your particular notification method
+      def deliver!
+        raise NoMethodError, "You need to implement 'deliver!' method in your notifier"
+      end
+
+      private
+
+      # Over-ride this method to send diferent message
+      def message(notification)
+        if notification.success
+          "Deployed #{notification.application} with revision #{notification.repository.info.revision} — #{notification.repository.info.message.slice(0, 100)}"
+        else
+          "FAIL! Deploying #{notification.application} failed. Check deploy.log for details."
+        end
+      end
+
+      # Implement this method to check for notifier configuration
+      def configured?
+        raise NoMethodError, "You need to implement 'configured?' method in your notifier"
+      end
+
+    end
+
+    # Twitter notifications (default)
+    class Twitter < Base
 
       def deliver!(notification)
         return unless configured?
-        message = if notification.success
-          "Deployed #{notification.application} with revision #{notification.repository.info.revision} — #{notification.repository.info.message.slice(0, 100)}"
-        else
-          "FAIL! Deploying #{notification.application} failed. Check log for details."
-        end
-        %x[curl --silent --data status='#{message}' http://#{config['username']}:#{config['password']}@twitter.com/statuses/update.json]
-
+        %x[curl --silent --data status='#{message(notification)}' http://#{config['username']}:#{config['password']}@twitter.com/statuses/update.json]
       end
 
       private

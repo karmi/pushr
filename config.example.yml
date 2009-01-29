@@ -20,4 +20,4 @@ notifiers:
      password: ~
   # IRC is also possible, see http://github.com/karmi/pushr_notifiers/blob/master/irc.rb
   # - irc:
-  #      uri: 'irc://irc.freenode.cz:6667/test'
+  #      uri: 'irc://irc.freenode.net:6667/test'
