@@ -26,9 +26,9 @@ Pushr assumes this:
 Pushr calls Capistrano's deploy task specified in <tt>config.yml</tt> (or <tt>deploy:migrations</tt> by default)
 whenever you push to the repository with the hook.
 
-Currently it logs the output into a file and updates status for configured Twitter account. Other notifications? Sure, later.
-
 You can also deploy by literally pushing a button in Pushr's web-interface.
+
+Currently it logs the output into a file and updates status for configured Twitter account. You can setup more notifiers in <tt>config.yml</tt> file. See example one at http://github.com/karmi/pushr_notifiers/blob/master/irc.rb, fork and enhance.
 
 
 == Want to try it out?
@@ -72,4 +72,3 @@ Get more information in introductory post @ http://www.restafari.org/pushr-or-th
 
 * Visualize deploy.log on webpage in a sparkline graph (succeeded/failed deploys, show relevant portion of deploy.log for each deploy, etc)
 
-* Improve & separate Notifications (Twitter, e-mail, Jabber, ...)
