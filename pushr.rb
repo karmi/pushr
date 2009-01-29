@@ -127,7 +127,6 @@ module Pushr
       @repository.reload!  # Update repository info (after deploy)
       log_deploy_result
       send_notifications
-      return { :success => @success, :output  => @cap_output.to_s }
     end
 
     private
@@ -199,7 +198,7 @@ end
 # == Deploy!
 post '/' do
   @pushr = Pushr::Application.new(CONFIG['path'])
-  @info = @pushr.deploy!(params[:force])
+  @pushr.deploy!(params[:force])
   haml :deployed
 end
 
@@ -247,7 +246,7 @@ __END__
 
 
 @@ deployed
-- if @info[:success]
+- if @pushr.success
   %div.success
     %h2
       Application deployed successfully.
@@ -255,7 +254,7 @@ __END__
       %p
         %input{ 'type' => 'submit', 'value' => 'Return to index' }
     %pre
-      = @info[:output]
+      = @pushr.cap_output
 - else
   %div.failure
     %h2
@@ -264,7 +263,7 @@ __END__
       %p
         %input{ 'type' => 'submit', 'value' => 'Return to index' }
     %pre
-      = @info[:output]
+      = @pushr.cap_output
 
 @@ style
 body
