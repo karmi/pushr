@@ -38,8 +38,8 @@ class Pushr
     end unless force == 'true'
     cap_command = CONFIG['cap_command'] || 'deploy:migrations'
     log.info(application) { "Deployment #{"(force) " if force == 'true' }starting..." }
-    cap_output = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
-    success    = (cap_output.to_s =~ /fail/).nil?
+    cap_output  = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
+    success     = $?.success?
     @repository = repository_info # Update repository info
     # TODO : Refactor logging/notifying into Observers, obviously!
     # ---> Log
@@ -69,9 +69,9 @@ class Pushr
   end
 
   def uptodate?
+    log.info('Pushr') { "Fetching new revisions from remote..." }
     info = `cd #{path}/shared/cached-copy; git fetch -q origin 2>&1`
     log.fatal('git fetch -q origin') { "Error while checking if app up-to-date: #{info}" } and return false unless $?.success?
-    log.info('Pushr') { "Fetched new revisions from remote..." }
     return info.strip == '' # Blank output => No updates from git remote
   end
 
