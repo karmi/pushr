@@ -28,14 +28,14 @@ whenever you push to the repository with the hook.
 
 You can also deploy by literally pushing a button in Pushr's web-interface.
 
-Pushr logs the Capistrano output into a file and updates status for configured Twitter account.
+Pushr logs the Capistrano output into a file and updates status for configured Twitter account (the default notification).
 
-You can setup more notifiers in <tt>config.yml</tt> file. Currently these are provided in a separate repo (http://github.com/karmi/pushr_notifiers):
+You can setup more notifiers in <tt>config.yml</tt> file. Currently these are provided:
 
 * IRC         (http://github.com/karmi/pushr_notifiers/blob/master/irc.rb)
 * XMPP/Jabber (http://github.com/karmi/pushr_notifiers/blob/master/jabber.rb)
 
-You can easily add more notifiers: they are modeled after Ingerity notifiers (http://integrityapp.com/notifiers), so it would be very easy to adapt them.
+You can easily add more notifiers: they are modeled after _Ingerity_ notifiers (http://integrityapp.com/notifiers), so it would be very, very easy to adapt those.
 
 
 == Want to try it out?
@@ -69,6 +69,8 @@ If you're satisfied with what you see, you should run and control Pushr backed-u
 
 Follow Twitter username you set in <tt>config.yml</tt> on Twitter for notifications. Run <tt>tail -f deploy.log</tt> to see what's really going on.
 
+NOTE: Notifiers would require more gems, obviously, such as Jabber would require the +xmppr+ gem.
+
 
 == More information
 
@@ -77,5 +79,5 @@ Get more information in introductory post @ http://www.restafari.org/pushr-or-th
 
 == Todos
 
-* Visualize deploy.log on webpage in a sparkline graph (succeeded/failed deploys, show relevant portion of deploy.log for each deploy, etc)
+* [!] Visualize deploy.log on webpage in a sparkline graph (succeeded/failed deploys, show relevant portion of deploy.log for each deploy, etc)
 
