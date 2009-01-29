@@ -5,79 +5,99 @@ require 'logger'
 
 # = Pushr
 # Deploy Rails applications by Github Post-Receive URLs launching Capistrano's commands
-# An experiment.
 
 CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unless defined? CONFIG
 
-# == Pushr class wraps everything
-class Pushr
+module Pushr
 
-  Struct.new('Repository', :revision, :message, :author, :when, :datetime) unless defined? Struct::Repository
-
-  unless defined? LOGGER
-    LOGGER       = Logger.new(File.join(File.dirname(__FILE__), 'deploy.log'), 'weekly')
-    LOGGER.level = Logger::INFO
-  end
-
-  attr_reader :path, :application, :repository
-
-  def initialize(path)
-    log.fatal('Pushr.new') { "Path not valid: #{path}" } and raise ArgumentError, "File not found: #{path}" unless File.exists?(path)
-    @path = path
-    @application = ::CONFIG['application'] || "You really should set this to something"
-    @repository  = repository_info
-  end
-
-  def log
-    LOGGER
-  end
-
-  def deploy!(force=false)
-    if uptodate? # Do not deploy if up-to-date (eg. push was to other branch)
-      log.info('Pushr') { "No updates for application found" } and return {:success => false, :output => 'Application is uptodate'}
-    end unless force == 'true'
-    cap_command = CONFIG['cap_command'] || 'deploy:migrations'
-    log.info(application) { "Deployment #{"(force) " if force == 'true' }starting..." }
-    cap_output  = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
-    success     = $?.success?
-    @repository = repository_info # Update repository info
-    # TODO : Refactor logging/notifying into Observers, obviously!
-    # ---> Log
-    if success
-      log.info('[SUCCESS]')   { "Successfuly deployed application with revision #{repository.revision} (#{repository.message}). Capistrano output:" }
-      log.info('Capistrano')  { cap_output.to_s }
-    else
-      log.warn('[FAILURE]')   { "Error when deploying application! Check Capistrano output below:" }
-      log.warn('Capistrano')  { cap_output.to_s }
+  # == Shared logger
+  module Logger
+    unless defined? LOGGER
+      LOGGER       = ::Logger.new(File.join(File.dirname(__FILE__), 'deploy.log'), 'weekly')
+      LOGGER.level = ::Logger::INFO
     end
-    # ---> Twitter
-    if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password'].nil?
-      twitter_message = (success) ?
-        "Deployed #{application} with revision #{repository.revision} — #{repository.message.slice(0, 100)}" :
-        "FAIL! Deploying #{application} failed. Check log for details."
-      %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
+    def log; LOGGER; end
+  end
+
+  # == Wrapping Git stuff
+  class Repository
+
+    include Logger
+
+    Struct.new('Info', :revision, :message, :author, :when, :datetime) unless defined? Struct::Info
+
+    def initialize(path)
+      @path = path
     end
-    # TODO : This still smells
-    { :success => success, :output  => cap_output.to_s }
-  end
 
-  private
+    def info
+      info = `cd #{@path}/current; git log --pretty=format:'%h --|-- %s --|-- %an --|-- %ar --|-- %ci' -n 1`
+      @info ||= Struct::Info.new( *info.split(/\s{1}--\|--\s{1}/) )
+    end
 
-  def repository_info
-    info = `cd #{path}/current; git log --pretty=format:'%h --|-- %s --|-- %an --|-- %ar --|-- %ci' -n 1`
-    Struct::Repository.new( *info.split(/\s{1}--\|--\s{1}/) )
-  end
+    def reload!
+      @info = nil
+      info
+    end
 
-  def uptodate?
-    log.info('Pushr') { "Fetching new revisions from remote..." }
-    info = `cd #{path}/shared/cached-copy; git fetch -q origin 2>&1`
-    log.fatal('git fetch -q origin') { "Error while checking if app up-to-date: #{info}" } and return false unless $?.success?
-    return info.strip == '' # Blank output => No updates from git remote
-  end
+    def uptodate?
+      log.info('Pushr') { "Fetching new revisions from remote..." }
+      info = `cd #{path}/shared/cached-copy; git fetch -q origin 2>&1`
+      log.fatal('git fetch -q origin') { "Error while checking if app up-to-date: #{info}" } and return false unless $?.success?
+      return info.strip == '' # Blank output => No updates from git remote
+    end
 
-end
+  end # end Repository
 
-# Authorize all requests with username/password set in <tt>config.yml</tt>
+  # == Wrapping everything
+  class Application
+
+    include Logger
+
+    attr_reader :path, :application, :repository
+
+    def initialize(path)
+      log.fatal('Pushr.new') { "Path not valid: #{path}" } and raise ArgumentError, "File not found: #{path}" unless File.exists?(path)
+      @path = path
+      @application = ::CONFIG['application'] || "You really should set this to something"
+      @repository  = Repository.new(path)
+    end
+
+    def deploy!(force=false)
+      if repository.uptodate? # Do not deploy if up-to-date (eg. push was to other branch)
+        log.info('Pushr') { "No updates for application found" } and return {:success => false, :output => 'Application is uptodate'}
+      end unless force == 'true'
+      cap_command = CONFIG['cap_command'] || 'deploy:migrations'
+      log.info(application) { "Deployment #{"(force) " if force == 'true' }starting..." }
+      cap_output  = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
+      success     = $?.success?
+      @repository.reload! # Update repository info
+      # TODO : Refactor logging/notifying into Observers, obviously!
+      # ---> Log
+      if success
+        log.info('[SUCCESS]')   { "Successfuly deployed application with revision #{repository.info.revision} (#{repository.info.message}). Capistrano output:" }
+        log.info('Capistrano')  { cap_output.to_s }
+      else
+        log.warn('[FAILURE]')   { "Error when deploying application! Check Capistrano output below:" }
+        log.warn('Capistrano')  { cap_output.to_s }
+      end
+      # ---> Twitter
+      if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password'].nil?
+        twitter_message = (success) ?
+          "Deployed #{application} with revision #{repository.info.revision} — #{repository.info.message.slice(0, 100)}" :
+          "FAIL! Deploying #{application} failed. Check log for details."
+        %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
+      end
+      { :success => success, :output  => cap_output.to_s }
+    end
+
+  end # end Application
+
+end # end Pushr
+
+# -------  Sinatra gets on stage here  --------------------------------------------------
+
+# -- Authorize all requests with username/password set in <tt>config.yml</tt>
 before do
   halt [404, "Not configured\n"] and return unless configured?
   response['WWW-Authenticate'] = %(Basic realm="[pushr] #{CONFIG['application']}") and \
@@ -85,6 +105,7 @@ before do
   return unless authorized?
 end
 
+# -- Helpers
 helpers do
 
   def authorized?
@@ -100,13 +121,13 @@ end
 
 # == Get info
 get '/' do
-  @pushr = Pushr.new(CONFIG['path'])
+  @pushr = Pushr::Application.new(CONFIG['path'])
   haml :info
 end
 
 # == Deploy!
 post '/' do
-  @pushr = Pushr.new(CONFIG['path'])
+  @pushr = Pushr::Application.new(CONFIG['path'])
   @info = @pushr.deploy!(params[:force])
   haml :deployed
 end
@@ -116,13 +137,14 @@ get '/style.css' do
   content_type 'text/css', :charset => 'utf-8'
   sass :style
 end
+get( '/favicon.ico' ) { content_type 'image/gif' }
 
 __END__
 
 @@ layout
 %html
   %head
-    %title= "[pushr] #{CONFIG['application']}"
+    %title= "[pushr] #{@pushr.application}"
     %meta{ 'http-equiv' => 'Content-Type', :content => 'text/html;charset=utf-8' }
     %link{ :rel => 'stylesheet', :type => 'text/css', :href => "/style.css" }
   %body
@@ -137,16 +159,16 @@ __END__
         = @pushr.application
     is
     %strong
-      = @pushr.repository.revision
+      = @pushr.repository.info.revision
     \:
     %strong
       %em
-        = @pushr.repository.message
+        = @pushr.repository.info.message
     committed
     %strong
-      = @pushr.repository.when
+      = @pushr.repository.info.when
     by
-    = @pushr.repository.author
+    = @pushr.repository.info.author
   %p
     %form{ :action => "/", :method => 'post', :onsubmit => "this.submit.disabled='true'" }
       %input{ 'type' => 'hidden', 'name' => 'force', 'value' => 'true' }
