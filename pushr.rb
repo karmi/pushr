@@ -8,6 +8,13 @@ require 'logger'
 
 CONFIG = YAML.load_file( File.join(File.dirname(__FILE__), 'config.yml') ) unless defined? CONFIG
 
+class String
+  # http://github.com/rails/rails/blob/master/activesupport/lib/active_support/core_ext/string/inflections.rb#L44-49
+  def camelize
+    self.gsub(/\/(.?)/) { "::#{$1.upcase}" }.gsub(/(?:^|_)(.)/) { $1.upcase }
+  end
+end
+
 module Pushr
 
   # == Shared logger
@@ -23,13 +30,43 @@ module Pushr
   # Inspired by http://github.com/foca/integrity
   class Notifier
 
+    # Inherit from this class in your notifiers
+    # See eg. http://github.com/karmi/pushr_notifiers/blob/master/irc.rb
     class Base
       def deliver!
         raise NoMethodError, "you need to implement this method in your notifier"
       end
+      def configured?
+        false
+      end
     end
 
+    # Twitter notifications (default)
     class Twitter < Base
+
+      attr_reader :config
+
+      def initialize(config={})
+        @config = config
+        Pushr::Logger::LOGGER.fatal('Twitter notifier') { "Twitter not configured" } unless configured?
+      end
+
+      def deliver!(notification)
+        return unless configured?
+        message = if notification.success
+          "Deployed #{notification.application} with revision #{notification.repository.info.revision} — #{notification.repository.info.message.slice(0, 100)}"
+        else
+          "FAIL! Deploying #{notification.application} failed. Check log for details."
+        end
+        %x[curl --silent --data status='#{message}' http://#{config['username']}:#{config['password']}@twitter.com/statuses/update.json]
+
+      end
+
+      private
+
+      def configured?
+        !config['username'].nil? && !config['password'].nil?
+      end
     end
 
   end # end Notifier
@@ -69,7 +106,7 @@ module Pushr
 
     include Logger
 
-    attr_reader :path, :application, :repository
+    attr_reader :path, :application, :repository, :success, :cap_output
 
     def initialize(path)
       log.fatal('Pushr.new') { "Path not valid: #{path}" } and raise ArgumentError, "File not found: #{path}" unless File.exists?(path)
@@ -80,24 +117,17 @@ module Pushr
     end
 
     def deploy!(force=false)
-      if repository.uptodate? # Do not deploy if up-to-date (eg. push was to other branch)
+      if repository.uptodate? # Do not deploy if up-to-date (eg. push was to other branch) ...
         log.info('Pushr') { "No updates for application found" } and return {:@success => false, :output => 'Application is uptodate'}
-      end unless force == 'true'
+      end unless force == 'true' # ... unless forced from web GUI
       cap_command = CONFIG['cap_command'] || 'deploy:migrations'
       log.info(application) { "Deployment #{"(force) " if force == 'true' }starting..." }
       @cap_output  = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
       @success     = $?.success?
-      @repository.reload!         # Update repository info (after deploy)
+      @repository.reload!  # Update repository info (after deploy)
       log_deploy_result
       send_notifications
-      # ---> Twitter
-      if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password'].nil?
-        twitter_message = (@success) ?
-          "Deployed #{application} with revision #{repository.info.revision} — #{repository.info.message.slice(0, 100)}" :
-          "FAIL! Deploying #{application} failed. Check log for details."
-        %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
-      end
-      { :success => @success, :output  => @cap_output.to_s }
+      return { :success => @success, :output  => @cap_output.to_s }
     end
 
     private
@@ -113,9 +143,23 @@ module Pushr
     end
 
     def load_notifiers
+      @notifiers_path = CONFIG['notifiers_path'] || '../pushr_notifiers'
+      @notifiers = []
+      CONFIG['notifiers'].each do |notifier|
+        notifier_name, notifier_config = notifier.to_a.flatten
+        unless Pushr::Notifier::const_defined?(notifier_name.to_s.camelize)
+          begin
+            require File.join( File.dirname(__FILE__), @notifiers_path, notifier_name  ) 
+          rescue Exception => e
+            raise "Notifier #{notifier_name} not found! (#{e.message})"
+          end
+        end
+        @notifiers << Pushr::Notifier::const_get( notifier_name.to_s.camelize ).new(notifier_config)
+      end
     end
 
     def send_notifications
+      @notifiers.each { |n| n.deliver!(self) }
     end
 
   end # end Application
