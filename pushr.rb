@@ -19,6 +19,21 @@ module Pushr
     def log; LOGGER; end
   end
 
+  # == Wrapping notifications
+  # Inspired by http://github.com/foca/integrity
+  class Notifier
+
+    class Base
+      def deliver!
+        raise NoMethodError, "you need to implement this method in your notifier"
+      end
+    end
+
+    class Twitter < Base
+    end
+
+  end # end Notifier
+
   # == Wrapping Git stuff
   class Repository
 
@@ -49,7 +64,7 @@ module Pushr
 
   end # end Repository
 
-  # == Wrapping everything
+  # == Wrapping application logic
   class Application
 
     include Logger
@@ -61,34 +76,46 @@ module Pushr
       @path = path
       @application = ::CONFIG['application'] || "You really should set this to something"
       @repository  = Repository.new(path)
+      load_notifiers
     end
 
     def deploy!(force=false)
       if repository.uptodate? # Do not deploy if up-to-date (eg. push was to other branch)
-        log.info('Pushr') { "No updates for application found" } and return {:success => false, :output => 'Application is uptodate'}
+        log.info('Pushr') { "No updates for application found" } and return {:@success => false, :output => 'Application is uptodate'}
       end unless force == 'true'
       cap_command = CONFIG['cap_command'] || 'deploy:migrations'
       log.info(application) { "Deployment #{"(force) " if force == 'true' }starting..." }
-      cap_output  = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
-      success     = $?.success?
-      @repository.reload! # Update repository info
-      # TODO : Refactor logging/notifying into Observers, obviously!
-      # ---> Log
-      if success
-        log.info('[SUCCESS]')   { "Successfuly deployed application with revision #{repository.info.revision} (#{repository.info.message}). Capistrano output:" }
-        log.info('Capistrano')  { cap_output.to_s }
-      else
-        log.warn('[FAILURE]')   { "Error when deploying application! Check Capistrano output below:" }
-        log.warn('Capistrano')  { cap_output.to_s }
-      end
+      @cap_output  = %x[cd #{path}/shared/cached-copy; cap #{cap_command} 2>&1]
+      @success     = $?.success?
+      @repository.reload!         # Update repository info (after deploy)
+      log_deploy_result
+      send_notifications
       # ---> Twitter
       if CONFIG['twitter'] && !CONFIG['twitter']['username'].nil? && !CONFIG['twitter']['password'].nil?
-        twitter_message = (success) ?
+        twitter_message = (@success) ?
           "Deployed #{application} with revision #{repository.info.revision} — #{repository.info.message.slice(0, 100)}" :
           "FAIL! Deploying #{application} failed. Check log for details."
         %x[curl --silent --data status='#{twitter_message}' http://#{CONFIG['twitter']['username']}:#{CONFIG['twitter']['password']}@twitter.com/statuses/update.json]
       end
-      { :success => success, :output  => cap_output.to_s }
+      { :success => @success, :output  => @cap_output.to_s }
+    end
+
+    private
+
+    def log_deploy_result
+      if @success
+        log.info('[SUCCESS]')   { "Successfuly deployed application with revision #{repository.info.revision} (#{repository.info.message}). Capistrano output:" }
+        log.info('Capistrano')  { @cap_output.to_s }
+      else
+        log.warn('[FAILURE]')   { "Error when deploying application! Check Capistrano output below:" }
+        log.warn('Capistrano')  { @cap_output.to_s }
+      end
+    end
+
+    def load_notifiers
+    end
+
+    def send_notifications
     end
 
   end # end Application
