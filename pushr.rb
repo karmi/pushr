@@ -165,7 +165,11 @@ __END__
       = @info[:output]
 - else
   %div.failure
-    %h2 There were errors when deploying the application!
+    %h2
+      There were errors when deploying the application!
+    %form{ 'action' => "", :method => 'get' }
+      %p
+        %input{ 'type' => 'submit', 'value' => 'Return to index' }
     %pre
       = @info[:output]
 
