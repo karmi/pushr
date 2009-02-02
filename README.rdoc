@@ -1,14 +1,11 @@
 = Pushr
 
-Deploy Rails applications by Github Post-Receive URLs launching Capistrano's tasks (<tt>cap deploy</tt>, <tt>cap staging deploy</tt>)
+Deploy Rails applications by Github Post-Receive URLs launching Capistrano's tasks (<tt>cap deploy</tt>, <tt>cap staging deploy</tt>) or by pushing button in web GUI and get notifications by Twitter, IRC or Jabber.
 
 Why? Because my friend Machal still cannot fix Capistrano on his Windows box and can now deploy with _GitGUI_.
 (No need to launch "DOS" for him when only thing he did is fixing some CSS or updating some assets.)
 
-Because it could be cool, what you think?
-
-Obviously, do not use on mission critical deployments :)
-
+Currently runs deployment for about 5 Rails apps.
 
 == What?
 
@@ -71,10 +68,16 @@ Follow Twitter username you set in <tt>config.yml</tt> on Twitter for notificati
 
 NOTE: Notifiers would require more gems, obviously, such as Jabber would require the +xmppr+ gem.
 
+You can use Pushr without Github, obviously: you just need to setup a post-receive hook in your <tt>.git/hooks/post-receive</tt> with _curl_ or something like that.
+
 
 == More information
 
-Get more information in introductory post @ http://www.restafari.org/pushr-or-the-application-will-deploy-itself.html
+Get more information in these articles: 
+
+* http://www.restafari.org/pushr-or-the-application-will-deploy-itself.html (November 2008)
+* http://www.restafari.org/capistrano-pushr-now-better.html (December 2008)
+* http://www.restafari.org/capistrano-pushr-refactored-with-more-notifiers.html (January 2009)
 
 
 == Todos
