@@ -162,7 +162,7 @@ module Pushr
           begin
             require File.join( File.dirname(__FILE__), @notifiers_path, notifier_name  ) 
           rescue Exception => e
-            raise "Notifier #{notifier_name} not found! (#{e.message})"
+            raise LoadError, "Notifier #{notifier_name} not found! (#{e.message})"
           end
         end
         @notifiers << Pushr::Notifier::const_get( notifier_name.to_s.camelize ).new(notifier_config)
