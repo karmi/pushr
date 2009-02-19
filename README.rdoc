@@ -82,5 +82,7 @@ Get more information in these articles:
 
 == Todos
 
+* Disable deploy with `[nodeploy]` declaration in commit message
+
 * [!] Visualize deploy.log on webpage in a sparkline graph (succeeded/failed deploys, show relevant portion of deploy.log for each deploy, etc)
 
